@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐱 NEKO RUNNER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  #title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+
+  #title-screen h1 {
+    font-size: clamp(20px, 5vw, 36px);
+    color: #ffd700;
+    text-shadow: 4px 4px 0 #b8860b, 0 0 20px #ffd700;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  .subtitle {
+    font-size: clamp(8px, 2vw, 12px);
+    color: #a0d8ef;
+    line-height: 2;
+  }
+
+  .start-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(10px, 2.5vw, 14px);
+    padding: 16px 32px;
+    background: #ffd700;
+    color: #1a1a2e;
+    border: 4px solid #b8860b;
+    cursor: pointer;
+    animation: blink 1s infinite;
+    box-shadow: 4px 4px 0 #b8860b;
+    transition: transform 0.1s;
+  }
+  .start-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #b8860b; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  #game-container {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+    padding: 10px;
+  }
+
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    color: #ffd700;
+    font-size: clamp(7px, 1.8vw, 11px);
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+
+  #canvas-wrapper {
+    position: relative;
+    width: 100%;
+    border: 4px solid #ffd700;
+    box-shadow: 0 0 30px rgba(255,215,0,0.3), inset 0 0 30px rgba(0,0,0,0.5);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    image-rendering: pixelated;
+    background: #0d1b2a;
+  }
+
+  /* ── GAME OVER OVERLAY ── */
+  #overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.82);
+    color: #fff;
+    overflow-y: auto;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    gap: 5px;
+    touch-action: auto;
+  }
+
+  /* Stage 1: flavor message */
+  #overlay-stage1 { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+
+  #overlay h2 {
+    font-size: clamp(10px, 3.5vw, 24px);
+    color: #ff6b6b;
+    text-shadow: 3px 3px 0 #8b0000;
+    margin: 0;
+  }
+
+  #result-text {
+    font-size: clamp(7px, 1.8vw, 12px);
+    color: #ffd700;
+    line-height: 1.65;
+    text-align: center;
+    padding: 0 4px;
+  }
+
+  /* "tap to continue" prompt */
+  #tap-prompt {
+    font-size: clamp(6px, 1.4vw, 10px);
+    color: #a0d8ef;
+    letter-spacing: 0.1em;
+    animation: blink 1s infinite;
+    margin-top: 2px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    touch-action: auto;
+    -webkit-tap-highlight-color: rgba(255,255,255,0.1);
+  }
+  #tap-prompt.visible { opacity: 1; }
+
+  /* Stage 2: score + register + buttons */
+  #overlay-stage2 { display: none; flex-direction: column; align-items: center; gap: 5px; width: 100%; }
+
+  #stage2-score {
+    font-size: clamp(7px, 2vw, 13px);
+    color: #ffd700;
+    text-align: center;
+  }
+
+  #name-input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    border: 2px solid #4a6177;
+    padding: 6px 12px;
+    background: rgba(13,27,42,0.9);
+    width: 90%;
+    max-width: 340px;
+    touch-action: auto;
+  }
+
+  #name-input-area label {
+    font-size: clamp(5px, 1.2vw, 8px);
+    color: #a0d8ef;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* landscape: vw is small so boost with vh-based floor */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #overlay h2      { font-size: clamp(12px, 4.5vh, 24px); }
+    #result-text     { font-size: clamp(8px,  2.8vh, 12px); line-height: 1.5; }
+    #tap-prompt      { font-size: clamp(7px,  2.2vh, 10px); }
+    #stage2-score    { font-size: clamp(8px,  2.5vh, 13px); }
+    #name-input-area label { font-size: clamp(6px, 1.8vh, 8px); }
+    #submit-score-btn      { font-size: clamp(7px, 2vh,  10px); }
+    .overlay-btn           { font-size: clamp(8px, 2.5vh, 12px); }
+    .overlay-btn.secondary { font-size: clamp(6px, 2vh,   9px); }
+    #overlay { gap: 3px; padding: 4px 8px; }
+    #overlay-stage1 { gap: 3px; }
+    #overlay-stage2 { gap: 3px; }
+    #name-input-area { gap: 3px; padding: 4px 10px; }
+  }
+
+  #player-name-input {
+    font-family: 'Press Start 2P', monospace;
+    /* 16px minimum prevents iOS auto-zoom on focus */
+    font-size: 16px;
+    padding: 5px 10px;
+    background: #0d1b2a;
+    color: #ffd700;
+    border: 3px solid #ffd700;
+    outline: none;
+    text-align: center;
+    width: 100%;
+    touch-action: auto;
+    /* Scale down visually without triggering zoom */
+    transform-origin: center;
+  }
+  #player-name-input:focus { border-color: #fff; box-shadow: 0 0 8px rgba(255,215,0,0.5); }
+
+  #submit-score-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(6px, 1.4vw, 10px);
+    padding: 6px 14px;
+    background: #27ae60;
+    color: #fff;
+    border: 3px solid #1a7a41;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #1a7a41;
+    touch-action: auto;
+  }
+  #submit-score-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .overlay-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(7px, 1.8vw, 12px);
+    padding: 7px 16px;
+    background: #ffd700;
+    color: #1a1a2e;
+    border: 3px solid #b8860b;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #b8860b;
+    flex-shrink: 0;
+    touch-action: auto;
+  }
+  .overlay-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #b8860b; }
+  .overlay-btn.secondary {
+    background: #2c3e50;
+    color: #a0d8ef;
+    border-color: #4a6177;
+    box-shadow: 3px 3px 0 #1a252f;
+    font-size: clamp(5px, 1.3vw, 9px);
+    padding: 5px 10px;
+  }
+
+  /* ── RANKING SCREEN ── */
+  /* ── RANKING SCREEN ── */
+  #ranking-screen {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.96);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px 12px;
+    overflow-y: auto;
+  }
+
+  #ranking-screen h2 {
+    font-size: clamp(14px, 4vw, 26px);
+    color: #ffd700;
+    text-shadow: 3px 3px 0 #b8860b, 0 0 20px #ffd700;
+    margin-bottom: 4px;
+    margin-top: 4px;
+  }
+
+  #ranking-screen .ranking-subtitle {
+    font-size: clamp(6px, 1.3vw, 8px);
+    color: #555;
+    margin-bottom: 16px;
+  }
+
+  #ranking-list { width: 100%; max-width: 560px; }
+
+  .rank-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    border: 2px solid #2c3e50;
+    background: #0d1b2a;
+    font-size: clamp(7px, 1.6vw, 11px);
+  }
+  .rank-row.highlight { border-color: #27ae60 !important; background: #0a1f0a !important; box-shadow: 0 0 12px rgba(39,174,96,0.4); }
+  .rank-row.rank-1 { border-color: #ffd700; background: #1a1800; }
+  .rank-row.rank-2 { border-color: #c0c0c0; background: #161616; }
+  .rank-row.rank-3 { border-color: #cd7f32; background: #180e00; }
+
+  .rank-num { font-size: clamp(8px,2vw,13px); color:#666; width:26px; text-align:center; flex-shrink:0; }
+  .rank-row.rank-1 .rank-num { color:#ffd700; }
+  .rank-row.rank-2 .rank-num { color:#c0c0c0; }
+  .rank-row.rank-3 .rank-num { color:#cd7f32; }
+  .rank-name { flex:1; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rank-score { color:#ffd700; flex-shrink:0; }
+  .rank-date { color:#3a3a3a; font-size:clamp(5px,1.1vw,7px); flex-shrink:0; }
+  .rank-new { color:#27ae60; font-size:clamp(5px,1.1vw,7px); flex-shrink:0; animation:blink 0.8s infinite; }
+
+  .ranking-close-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px,1.8vw,12px);
+    padding: 12px 28px;
+    background: #ffd700;
+    color: #1a1a2e;
+    border: 3px solid #b8860b;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #b8860b;
+    margin-top: 16px; margin-bottom: 8px;
+  }
+
+  .rank-empty { text-align:center; color:#444; font-size:clamp(7px,1.6vw,10px); padding:20px; line-height:2.8; }
+
+  #ranking-btn-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(7px,1.6vw,10px);
+    padding: 10px 18px;
+    background: transparent;
+    color: #a0d8ef;
+    border: 2px solid #4a6177;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  #ranking-btn-title:hover { border-color:#ffd700; color:#ffd700; }
+
+  #instructions {
+    margin-top: 8px;
+    font-size: clamp(6px,1.5vw,9px);
+    color: #a0d8ef;
+    text-align: center;
+    line-height: 2.2;
+  }
+
+  .loading-text { color:#444; font-size:clamp(7px,1.6vw,10px); text-align:center; padding:20px; animation:blink 1s infinite; }
+</style>
+</head>
+<body>
+
+<!-- ── TITLE SCREEN ── -->
+<div id="title-screen">
+  <div style="font-size:clamp(60px,15vw,100px);">🐱</div>
+  <h1>NEKO RUNNER</h1>
+  <div class="subtitle">
+    The cat must keep running from humans!<br>
+    SPACE / TAP to jump
+  </div>
+  <button class="start-btn" onclick="startGame()">▶ START</button>
+  <button id="ranking-btn-title" onclick="showRanking()">🏆 RANKING</button>
+  <div style="font-size:clamp(6px,1.5vw,9px);color:#666;line-height:2;">
+    PC: SPACE / ↑ KEY &nbsp;|&nbsp; Mobile: TAP
+  </div>
+</div>
+
+<!-- ── GAME ── -->
+<div id="game-container">
+  <div id="hud">
+    <span id="score-display">SCORE: 0</span>
+    <span id="hi-display">HI: 0</span>
+    <span id="speed-display">SPEED: 1</span>
+  </div>
+  <div id="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="overlay">
+      <!-- Stage 1: flavor message + tap prompt -->
+      <div id="overlay-stage1">
+        <h2>GAME OVER</h2>
+        <div id="result-text"></div>
+        <div id="tap-prompt" onclick="goStage2()">&#9654; TAP / CLICK TO CONTINUE</div>
+      </div>
+
+      <!-- Stage 2: score + name register + buttons -->
+      <div id="overlay-stage2">
+        <div id="stage2-score"></div>
+        <div id="name-input-area">
+          <label>&#127942; REGISTER YOUR NAME TO THE LEADERBOARD<br>(max 12 characters)</label>
+          <input type="text" id="player-name-input" maxlength="12" placeholder="YOUR NAME" autocomplete="off" spellcheck="false">
+          <button id="submit-score-btn" onclick="submitScore()">&#10004; SUBMIT</button>
+        </div>
+        <button class="overlay-btn" id="restart-btn" onclick="restartGame()">&#9654; PLAY AGAIN</button>
+        <button class="overlay-btn secondary" id="ranking-overlay-btn" onclick="showRanking()">&#127942; VIEW RANKING</button>
+      </div>
+    </div>
+
+  </div>
+  <div id="instructions">
+    SPACE / ↑ / TAP : Jump &nbsp;|&nbsp; Double Jump available!
+  </div>
+</div>
+
+<!-- ── RANKING SCREEN ── -->
+<div id="ranking-screen">
+  <h2>🏆 RANKING 🏆</h2>
+  <div class="ranking-subtitle">NEKO RUNNER — ALL-TIME HIGH SCORES TOP 10</div>
+  <div id="ranking-list"><div class="loading-text">Loading...</div></div>
+  <button class="ranking-close-btn" onclick="closeRanking()">✕ CLOSE</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = 800, H = 200;
+canvas.width = W;
+canvas.height = H;
+
+let hiScore = 0;
+let gameState = 'idle';
+let score = 0;
+let frameCount = 0;
+let speed = 4;
+let obstacles = [];
+let enemies = [];
+let particles = [];
+let groundY = H - 30;
+let spawnTimer = 0;
+let nextSpawn = 60;
+let clouds = [];
+let speedUpFlash = 0;
+let lastSpeedLevel = 0;
+let lastMilestone = 0;
+
+// ── STORAGE (shared leaderboard) ──
+const STORAGE_KEY = 'neko-runner-ranking-v1';
+
+function loadRanking() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+function saveRanking(list) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch(e) {}
+}
+function addScore(name, sc) {
+  const list = loadRanking();
+  list.push({ name: name.trim() || 'Anonymous Cat', score: sc, date: new Date().toLocaleDateString('en-US') });
+  list.sort((a,b) => b.score - a.score);
+  const top = list.slice(0, 10);
+  saveRanking(top);
+  return top;
+}
+
+// ── RANKING UI ──
+let lastSubmittedName = '';
+let lastSubmittedScore = null;
+
+function showRanking() {
+  document.getElementById('ranking-screen').style.display = 'flex';
+  const list = loadRanking();
+  renderRankingList(list, false);
+}
+function renderRankingList(list, showNew) {
+  const el = document.getElementById('ranking-list');
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div class="rank-empty">No records yet.<br><br>Be the first legend! 🐱</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = list.map((entry, i) => {
+    const rankClass = i < 3 ? ` rank-${i+1}` : '';
+    const isNew = showNew && entry.name === lastSubmittedName && entry.score === lastSubmittedScore;
+    const hlClass = isNew ? ' highlight' : '';
+    const numEl = i < 3 ? `<span class="rank-num">${medals[i]}</span>` : `<span class="rank-num">${i+1}</span>`;
+    const badge = isNew ? `<span class="rank-new">★NEW</span>` : `<span class="rank-date">${entry.date||''}</span>`;
+    return `<div class="rank-row${rankClass}${hlClass}">
+      ${numEl}
+      <span class="rank-name">${escHtml(entry.name)}</span>
+      <span class="rank-score">${entry.score}</span>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function closeRanking() {
+  document.getElementById('ranking-screen').style.display = 'none';
+}
+
+// ── SUBMIT SCORE ──
+function submitScore() {
+  const input = document.getElementById('player-name-input');
+  const name = input.value.trim() || 'Anonymous Cat';
+  lastSubmittedName = name;
+  lastSubmittedScore = score;
+  const list = addScore(name, score);
+  document.getElementById('name-input-area').style.display = 'none';
+  document.getElementById('ranking-screen').style.display = 'flex';
+  document.getElementById('ranking-list').innerHTML = '';
+  renderRankingList(list, true);
+}
+
+// ── PLAYER (CAT) ──
+const cat = {
+  x:80, y:groundY, w:36, h:36,
+  vy:0, jumpCount:0, maxJumps:2,
+  frame:0, frameTimer:0, dead:false,
+  get bottom(){return this.y+this.h;}, get top(){return this.y;},
+  get right(){return this.x+this.w;}, get left(){return this.x;}
+};
+function resetCat() {
+  cat.y=groundY-cat.h; cat.vy=0; cat.jumpCount=0;
+  cat.frame=0; cat.frameTimer=0; cat.dead=false;
+}
+
+const enemyTypes = [
+  {name:'man',   color:'#4a90d9', headColor:'#f4c8a0', w:20, h:38, speed:1.0},
+  {name:'woman', color:'#e87ea1', headColor:'#f4c8a0', w:18, h:40, speed:0.9},
+  {name:'big',   color:'#2d5a27', headColor:'#c8a070', w:28, h:50, speed:1.1},
+  {name:'child', color:'#ffb347', headColor:'#f4c8a0', w:14, h:28, speed:1.3},
+  {name:'ojii',  color:'#888888', headColor:'#e0c8b0', w:18, h:34, speed:0.7},
+  {name:'obaa',  color:'#9b59b6', headColor:'#e0c8b0', w:18, h:34, speed:0.7},
+];
+
+// ── DRAW ──
+function drawCat(x, y, frame, dead) {
+  const px=Math.round(x), py=Math.round(y);
+  if (dead) {
+    ctx.fillStyle='#ff8800'; ctx.fillRect(px,py+20,36,14);
+    ctx.fillStyle='#ffaa33'; ctx.fillRect(px+20,py+10,18,18);
+    ctx.fillRect(px+20,py+4,6,8); ctx.fillRect(px+32,py+4,6,8);
+    ctx.fillStyle='#ff3333'; ctx.fillText('×',px+22,py+22);
+    ctx.fillStyle='#ff8800'; ctx.fillRect(px,py+14,6,12);
+    return;
+  }
+  const lo=(frame%4<2)?2:-2;
+  ctx.fillStyle='#ff8800'; ctx.fillRect(px+2,py+14,28,16);
+  ctx.fillStyle='#ffaa33'; ctx.fillRect(px+18,py+2,18,18);
+  ctx.fillStyle='#ff8800'; ctx.fillRect(px+18,py-4,5,8); ctx.fillRect(px+31,py-4,5,8);
+  ctx.fillStyle='#ffccaa'; ctx.fillRect(px+20,py-2,3,5); ctx.fillRect(px+33,py-2,3,5);
+  ctx.fillStyle='#1a1a1a'; ctx.fillRect(px+22,py+7,3,3); ctx.fillRect(px+29,py+7,3,3);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(px+23,py+7,1,1); ctx.fillRect(px+30,py+7,1,1);
+  ctx.fillStyle='#ff6699'; ctx.fillRect(px+25,py+12,3,2);
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(px+18,py+11,8,1); ctx.fillRect(px+18,py+13,8,1);
+  ctx.fillRect(px+35,py+11,6,1); ctx.fillRect(px+35,py+13,6,1);
+  ctx.fillStyle='#cc6600'; ctx.fillRect(px+6,py+16,3,10); ctx.fillRect(px+12,py+16,3,10);
+  ctx.fillStyle='#ff8800';
+  if(frame%4<2){ctx.fillRect(px-4,py+10,8,4);ctx.fillRect(px-2,py+6,4,6);}
+  else{ctx.fillRect(px-4,py+14,8,4);ctx.fillRect(px-2,py+10,4,6);}
+  ctx.fillRect(px+20,py+28,5,6+lo); ctx.fillRect(px+27,py+28,5,6-lo);
+  ctx.fillRect(px+4,py+28,5,6-lo); ctx.fillRect(px+11,py+28,5,6+lo);
+  ctx.fillStyle='#ffccaa';
+  ctx.fillRect(px+19,py+33+lo,7,3); ctx.fillRect(px+26,py+33-lo,7,3);
+  ctx.fillRect(px+3,py+33-lo,7,3); ctx.fillRect(px+10,py+33+lo,7,3);
+}
+
+function drawEnemy(e) {
+  const t=e.type, px=Math.round(e.x), py=Math.round(e.y), lf=(e.frame%4<2)?2:-2;
+  ctx.fillStyle=t.headColor;
+  const hs=Math.floor(t.w*0.6), hx=px+Math.floor((t.w-hs)/2);
+  ctx.fillRect(hx,py,hs,hs);
+  ctx.fillStyle='#333'; ctx.fillRect(hx+2,py+3,2,2); ctx.fillRect(hx+hs-4,py+3,2,2);
+  ctx.fillStyle=t.color;
+  const bh=Math.floor(t.h*0.45), by=py+hs;
+  ctx.fillRect(px,by,t.w,bh);
+  ctx.fillStyle=t.name==='big'?'#1a3a14':(t.name==='child'?'#885500':'#2c3e50');
+  const lh=Math.floor(t.h*0.3), ly=by+bh;
+  ctx.fillRect(px+2,ly,Math.floor(t.w/2)-2,lh+lf);
+  ctx.fillRect(px+Math.floor(t.w/2),ly,Math.floor(t.w/2)-2,lh-lf);
+  ctx.fillStyle=t.color;
+  ctx.fillRect(px-3,by+2,4,Math.floor(bh*0.7)+lf);
+  ctx.fillRect(px+t.w-1,by+2,4,Math.floor(bh*0.7)-lf);
+  if(t.name==='woman'){ctx.fillStyle='#e87ea1';ctx.fillRect(px+2,by+bh-8,t.w-4,10);ctx.fillStyle='#6b3d0e';ctx.fillRect(hx-2,py,4,hs);ctx.fillRect(hx+hs-2,py,4,hs);}
+  if(t.name==='big'){ctx.fillStyle='#2d5a27';ctx.fillRect(px-5,by,6,bh);ctx.fillRect(px+t.w-1,by,6,bh);}
+  if(t.name==='child'){ctx.fillStyle='#e74c3c';ctx.fillRect(px+t.w-2,by,6,bh-4);}
+  if(t.name==='ojii'||t.name==='obaa'){ctx.fillStyle='#8b6914';ctx.fillRect(px+t.w+1,by,3,bh+lh+2);ctx.fillStyle='#e8e8e8';ctx.fillRect(hx,py,hs,5);if(t.name==='obaa'){ctx.fillStyle='#9b59b6';ctx.fillRect(px,by,t.w,8);}}
+  if(e.angry&&Math.floor(frameCount/20)%2===0){ctx.fillStyle='#ff4444';ctx.fillRect(px+Math.floor(t.w/2)-1,py-10,3,6);ctx.fillRect(px+Math.floor(t.w/2)-1,py-2,3,3);}
+}
+
+function drawObstacle(o) {
+  const px=Math.round(o.x), py=Math.round(o.y);
+  if(o.type==='rock'){ctx.fillStyle='#7f8c8d';ctx.fillRect(px,py+4,o.w,o.h-4);ctx.fillStyle='#95a5a6';ctx.fillRect(px+2,py,o.w-6,o.h-6);ctx.fillStyle='#bdc3c7';ctx.fillRect(px+4,py+2,4,3);}
+  else{ctx.fillStyle='#e67e22';ctx.fillRect(px,py,o.w,o.h);ctx.fillStyle='#d35400';ctx.fillRect(px,py,o.w,4);ctx.fillRect(px,py,4,o.h);ctx.fillStyle='#f39c12';ctx.fillRect(px+5,py+5,o.w-10,o.h-10);ctx.fillStyle='#5d4037';ctx.fillRect(px+2,py+2,o.w-4,2);ctx.fillRect(px+2,py+o.h-4,o.w-4,2);}
+}
+
+function spawnParticles(x,y,color,count){
+  for(let i=0;i<count;i++) particles.push({x,y,vx:(Math.random()-0.5)*6,vy:-Math.random()*5-1,life:1,color,size:Math.random()*4+2});
+}
+function initClouds(){
+  clouds=[];
+  for(let i=0;i<5;i++) clouds.push({x:Math.random()*W,y:10+Math.random()*40,w:40+Math.random()*40,speed:0.3+Math.random()*0.3});
+}
+
+// ── AUDIO ──
+function warmupAudio(){
+  const ac=new(window.AudioContext||window.webkitAudioContext)();
+  const osc=ac.createOscillator(),gain=ac.createGain();
+  osc.connect(gain);gain.connect(ac.destination);
+  gain.gain.setValueAtTime(0,ac.currentTime);
+  osc.start(ac.currentTime);osc.stop(ac.currentTime+0.001);
+  audioCtx=ac;
+}
+let audioCtx=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function playTone(type,freq,freq2,duration,vol,startTime){
+  const ac=getAudio(),t=startTime??ac.currentTime;
+  const osc=ac.createOscillator(),gain=ac.createGain();
+  osc.connect(gain);gain.connect(ac.destination);
+  osc.type=type;osc.frequency.setValueAtTime(freq,t);
+  if(freq2!==null)osc.frequency.exponentialRampToValueAtTime(freq2,t+duration);
+  gain.gain.setValueAtTime(vol,t);gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+  osc.start(t);osc.stop(t+duration);
+}
+function soundJump(isDouble){
+  if(isDouble){playTone('sine',600,900,0.12,0.3);playTone('square',400,600,0.08,0.08);}
+  else{playTone('sine',350,600,0.15,0.25);playTone('square',250,400,0.1,0.06);}
+}
+function soundLand(){const ac=getAudio(),t=ac.currentTime;playTone('sine',120,60,0.08,0.15,t);playTone('square',80,40,0.06,0.05,t);}
+function soundDie(){const ac=getAudio(),t=ac.currentTime;playTone('sawtooth',500,100,0.6,0.3,t);playTone('sine',800,200,0.4,0.2,t+0.05);playTone('sine',60,30,0.3,0.4,t+0.1);}
+function soundSpeedUp(){const ac=getAudio(),t=ac.currentTime;playTone('square',600,600,0.06,0.2,t);playTone('square',800,800,0.06,0.2,t+0.07);playTone('square',1000,1200,0.1,0.2,t+0.14);}
+
+// ── GAME LOGIC ──
+let wasOnGround=true;
+
+function spawnEntity(){
+  const isOb=Math.random()<0.25;
+  if(isOb){
+    const types=['rock','box'],t=types[Math.floor(Math.random()*2)];
+    const h=t==='rock'?22+Math.floor(Math.random()*14):24;
+    const w=t==='rock'?24+Math.floor(Math.random()*10):22;
+    obstacles.push({x:W+10,y:groundY-h,w,h,type:t});
+  }else{
+    const t=enemyTypes[Math.floor(Math.random()*enemyTypes.length)];
+    enemies.push({x:W+10,y:groundY-t.h,type:t,frame:0,frameTimer:0,angry:Math.random()<0.4});
+  }
+  nextSpawn=Math.max(30,90-Math.floor(score/200)*5+Math.floor(Math.random()*40-20));
+}
+
+function checkCollision(a,aw,ah,b,bw,bh){
+  const m=4;
+  return a.x+m<b.x+bw-m&&a.x+aw-m>b.x+m&&a.y+m<b.y+bh-m&&a.y+ah-m>b.y+m;
+}
+
+function update(){
+  if(gameState!=='playing')return;
+  frameCount++;score+=1;
+  const nl=Math.floor(score/300);
+  speed=4+nl*0.5;if(speed>14)speed=14;
+  if(nl>lastSpeedLevel&&score>10){speedUpFlash=50;lastSpeedLevel=nl;soundSpeedUp();}
+  cat.vy+=0.55;cat.y+=cat.vy;
+  const og=cat.y>=groundY-cat.h;
+  if(og){if(!wasOnGround)soundLand();cat.y=groundY-cat.h;cat.vy=0;cat.jumpCount=0;}
+  wasOnGround=og;
+  cat.frameTimer++;if(cat.frameTimer>5){cat.frame++;cat.frameTimer=0;}
+  for(const c of clouds){c.x-=c.speed*(speed/4);if(c.x+c.w<0){c.x=W+20;c.y=10+Math.random()*40;}}
+  spawnTimer++;if(spawnTimer>=nextSpawn){spawnTimer=0;spawnEntity();}
+  obstacles=obstacles.filter(o=>o.x+o.w>-10);
+  for(const o of obstacles){o.x-=speed;if(checkCollision(cat,cat.w,cat.h,o,o.w,o.h)){die();return;}}
+  enemies=enemies.filter(e=>e.x+e.type.w>-20);
+  for(const e of enemies){e.x-=speed*e.type.speed;e.frameTimer++;if(e.frameTimer>7){e.frame++;e.frameTimer=0;}if(checkCollision(cat,cat.w,cat.h,e,e.type.w,e.type.h)){die();return;}}
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.2;p.life-=0.04;}
+  particles=particles.filter(p=>p.life>0);
+  document.getElementById('score-display').textContent='SCORE: '+score;
+  document.getElementById('speed-display').textContent='SPEED: '+(Math.floor(speed*10)/10).toFixed(1);
+  if(score>hiScore){hiScore=score;document.getElementById('hi-display').textContent='HI: '+hiScore;}
+}
+
+// ── BILINGUAL MESSAGES (JP flavor + EN subtitle) ──
+const messages={
+  legend:[
+    {jp:'3000！？猫様、すでに伝説を超えて神話になっている！！\n人間よ、お前たちは今日、歴史の証人となった👑',en:'3000?! The Great Cat has surpassed legend and become MYTH!!\nHumans, you have witnessed history today. Be honored.'},
+    {jp:'もはや猫様は時間すら超越した。3000など通過点に過ぎぬ\n宇宙よ、この走りを永久に記録しておけ🌌',en:'The Great Cat has transcended time itself. 3000 is merely a waypoint.\nUniverse, record this run for all eternity.'},
+    {jp:'下僕たちは涙を流しながら追いかけた。無駄なことを\n猫様伝説は今この瞬間、完成した🐱✨',en:'The servants chased with tears in their eyes. Utterly futile.\nThe legend of the Great Cat is now complete.'},
+  ],
+  super:[
+    {jp:'2000を超えるとは…猫様、もはや神の領域に片足を踏み入れた！\n人間どもよ、ひれ伏すがよい。お前たちでは永遠に届かぬ🌟',en:'Over 2000?! The Great Cat has one paw in divine territory!\nBow down, humans. This height is forever beyond your reach.'},
+    {jp:'猫様の走りに、もはや人間の言葉では追いつけぬ\n風よ、道を開けよ。この猫様が通られる⚡',en:'No human words can describe the Great Cat\'s speed anymore.\nPart the wind — the Great Cat is passing through.'},
+    {jp:'下僕2000人分を蹴散らした計算になる。圧巻である\nこの世の頂点に、猫様の旗を立てよ🏔️',en:'That\'s the equivalent of scattering 2000 servants. Magnificent.\nPlant the cat\'s flag at the summit of this world.'},
+  ],
+  high:[
+    {jp:'さすが猫様！人間どもを軽々と翻弄した！\nこの世は猫のものだ、下僕どもに教えてやれ👑',en:'Magnificent, O Great Cat! Humans are mere toys!\nThis world belongs to cats. Let the servants know their place.'},
+    {jp:'神速の猫様、人間など眼中にもなし！\nもはや風になった。猫界の伝説として語り継がれるだろう🌪️',en:'Godspeed, Your Majesty! Humans? Not even worth a glance.\nYou have become the wind. A legend of the cat kingdom.'},
+    {jp:'完璧な走り！人間ごときが猫様に追いつけるわけがない\nこの星の支配者は、やはり猫である🐱',en:'Flawless run! No mere human can catch the Great Cat.\nThe ruler of this planet is, as always, the cat.'},
+    {jp:'人間どもの必死な顔が愉快でたまらない！\n猫様の背中はもう見えておるまい。格が違うのだよ、格が👑',en:'The desperate faces of the humans were most amusing!\nThe Great Cat\'s back is already out of sight. Know your place.'},
+    {jp:'これが猫様クオリティ。人間には一生理解できまい\n次の下僕たちも、同じ結末が待っている😼',en:'This is cat-level quality. Something humans will never comprehend.\nThe next batch of servants awaits the same fate.'},
+  ],
+  mid:[
+    {jp:'なかなかの走りだが、猫様としてはまだ本気ではない\n下僕どもよ、貴様らの相手はこれくらいにしておいてやろう😏',en:'Not bad, but the Great Cat was not even trying.\nConsider yourselves lucky, servants — this was mercy.'},
+    {jp:'人間をしばらく遊ばせてやった、それだけのこと\n猫様のお慈悲に感謝するがよい🐾',en:'The cat merely allowed the humans to play for a while.\nBe grateful for the Great Cat\'s generosity.'},
+    {jp:'悪くない。しかし猫様の実力はこんなものではない\n次はもっと人間を翻弄してみせよう✨',en:'Decent. But the Great Cat is capable of far more.\nNext time, the humans will be toyed with even further.'},
+    {jp:'まずまずの走りだが、猫様の本領はまだまだこんなものではない\n下僕どもよ、次は追いつけると思うな😏',en:'A decent run, but the Great Cat has barely warmed up.\nDo not think you can keep up next time, servants.'},
+    {jp:'人間どもを十分に楽しませてやった、感謝するがよい\nしかし猫様の全力を見せる日は、まだ来ていない🐾',en:'The humans were sufficiently entertained — you\'re welcome.\nBut the day the Great Cat goes all out has yet to come.'},
+  ],
+  low:[
+    {jp:'なんと、人間如きに追いつかれてしまうとは！\n猫様の名が泣いている…もう一度、格の違いを見せてやれ😾',en:'Unbelievable! Caught by a mere human?!\nThe cat\'s honor weeps... Go prove your superiority again!'},
+    {jp:'下僕に追いつかれるとは一体どういうことだ！\n猫様の沽券にかかわる。今すぐ名誉挽回せよ🐱',en:'Overtaken by a servant?! This is outrageous!\nThe Great Cat\'s pride is at stake — redeem yourself NOW.'},
+    {jp:'人間ごときに捕まるとは、猫様失格である\nゴロゴロしてる場合ではない、走れ！😤',en:'Caught by a human? You call yourself a cat?!\nStop purring and RUN!'},
+    {jp:'人間の足音に怯えるとは、猫様にあるまじき失態！\n修行が足りぬ。もう一度、威厳を取り戻してこい😾',en:'Trembling at the sound of human footsteps?! Unworthy of a cat!\nYou need more training. Go reclaim your dignity.'},
+    {jp:'下僕ごときにビビってどうする！猫様は常に余裕のはずでは？\nまあよい…次こそ、堂々と逃げてみせよ🐱',en:'Scared of a mere servant?! A cat should always look unbothered.\nFine... Next time, at least flee with dignity.'},
+  ]
+};
+function randomMsg(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+// ── GAME OVER 2-STAGE FLOW ──
+let restartReady = false;
+
+function die() {
+  gameState='dead'; restartReady=false; cat.dead=true;
+  spawnParticles(cat.x+cat.w/2, cat.y+cat.h/2, '#ff4444', 15);
+  spawnParticles(cat.x+cat.w/2, cat.y+cat.h/2, '#ffaa33', 10);
+  soundDie();
+
+  const tier = score>=3000?'legend':score>=2000?'super':score>=1000?'high':score>=500?'mid':'low';
+  const m = randomMsg(messages[tier]);
+  const jp = m.jp.replace(/\n/g,'<br>');
+  const en = m.en.replace(/\n/g,'<br>');
+
+  // Stage 1: show flavor message only
+  document.getElementById('result-text').innerHTML =
+    '<span style="color:#ffd700;line-height:1.8">' + jp + '</span>' +
+    '<br><span style="color:#a0d8ef;font-size:0.82em;line-height:1.6">' + en + '</span>';
+
+  document.getElementById('overlay-stage1').style.display = 'flex';
+  document.getElementById('overlay-stage2').style.display = 'none';
+
+  const tapPrompt = document.getElementById('tap-prompt');
+  tapPrompt.classList.remove('visible');
+
+  document.getElementById('overlay').style.display = 'flex';
+
+  // Show "tap to continue" after 1.5s
+  setTimeout(() => {
+    restartReady = true;
+    tapPrompt.classList.add('visible');
+  }, 1500);
+}
+
+function goStage2() {
+  // Switch from stage1 to stage2
+  document.getElementById('overlay-stage1').style.display = 'none';
+
+  const s2 = document.getElementById('overlay-stage2');
+  s2.style.display = 'flex';
+
+  // Show score in stage2
+  document.getElementById('stage2-score').innerHTML =
+    'SCORE: ' + score + '&nbsp;&nbsp;|&nbsp;&nbsp;BEST: ' + hiScore;
+
+  // Reset name input (restore visibility in case previous run hid it)
+  const nameInput = document.getElementById('player-name-input');
+  const submitBtn = document.getElementById('submit-score-btn');
+  const nameArea  = document.getElementById('name-input-area');
+  nameInput.value = '';
+  submitBtn.textContent = '\u2714 SUBMIT';
+  submitBtn.disabled = false;
+  nameArea.style.display = '';  // restore to CSS default (flex)
+}
+
+function jump() {
+  if (gameState==='idle') { startGame(); return; }
+  if (gameState==='dead') {
+    if (document.activeElement===document.getElementById('player-name-input')) return;
+    // Stage1: tap advances to stage2
+    if (document.getElementById('overlay-stage1').style.display !== 'none') {
+      if (restartReady) goStage2();
+      return;
+    }
+    return; // stage2: buttons handle actions
+  }
+  if (cat.jumpCount < cat.maxJumps) {
+    const isDouble = cat.jumpCount===1;
+    cat.vy=-10; cat.jumpCount++;
+    spawnParticles(cat.x+10, cat.y+cat.h, '#ffaa33', 5);
+    soundJump(isDouble);
+  }
+}
+
+function restartGame() {
+  gameState='playing'; score=0; frameCount=0; speed=4;
+  obstacles=[]; enemies=[]; particles=[];
+  spawnTimer=0; nextSpawn=60; restartReady=false;
+  wasOnGround=true; speedUpFlash=0; lastMilestone=0; lastSpeedLevel=0;
+  initClouds(); resetCat();
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('score-display').textContent='SCORE: 0';
+  document.getElementById('speed-display').textContent='SPEED: 4.0';
+}
+
+document.getElementById('player-name-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();submitScore();}
+});
+
+// ── RENDER ──
+const starPositions=Array.from({length:40},(_,i)=>({bx:(i*137)%W,by:(i*73)%120,size:(i%3===0)?2:1}));
+const speedLineY=Array.from({length:6},(_,i)=>15+i*25);
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0d1b2a';ctx.fillRect(0,0,W,H*0.6);
+  ctx.fillStyle='#1a2d4a';ctx.fillRect(0,H*0.6,W,H*0.4);
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  for(const s of starPositions){const sx=(s.bx+frameCount*0.1)%W;ctx.fillRect(sx,s.by,s.size,s.size);}
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  for(const c of clouds){
+    ctx.beginPath();ctx.ellipse(c.x+c.w/2,c.y+10,c.w/2,12,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(c.x+c.w*0.3,c.y+14,c.w*0.3,9,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(c.x+c.w*0.7,c.y+14,c.w*0.3,8,0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#2c3e50';ctx.fillRect(0,groundY,W,H-groundY);
+  ctx.fillStyle='#3d5166';ctx.fillRect(0,groundY,W,3);
+  ctx.fillStyle='#4a6177';
+  for(let i=0;i<W;i+=20){ctx.fillRect((i+Math.floor(frameCount*speed*0.5))%W,groundY+6,2,2);}
+  for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
+  ctx.globalAlpha=1;
+  for(const o of obstacles)drawObstacle(o);
+  for(const e of enemies)drawEnemy(e);
+  drawCat(cat.x,cat.y,cat.frame,cat.dead);
+  if(speed>8){
+    const alpha=Math.min((speed-8)*0.03,0.15);
+    ctx.strokeStyle=`rgba(255,255,255,${alpha})`;ctx.lineWidth=1;
+    for(let i=0;i<speedLineY.length;i++){const lx=(i*200+Math.floor(frameCount*speed*2))%W;ctx.beginPath();ctx.moveTo(lx,speedLineY[i]);ctx.lineTo(lx-30,speedLineY[i]);ctx.stroke();}
+  }
+  if(speedUpFlash>0){
+    const alpha=Math.min(speedUpFlash/50,1)*0.2;
+    ctx.fillStyle=`rgba(255,215,0,${alpha})`;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ffd700';ctx.font='12px "Press Start 2P",monospace';
+    ctx.fillText('SPEED UP!',W/2-55,H/2);speedUpFlash--;
+  }
+}
+
+let lastTime=0;
+function gameLoop(timestamp){
+  const delta=timestamp-lastTime;
+  if(delta>14){lastTime=timestamp;update();draw();}
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  warmupAudio();
+  document.getElementById('title-screen').style.display='none';
+  document.getElementById('game-container').style.display='flex';
+  restartGame();
+  requestAnimationFrame(gameLoop);
+}
+
+// ── INPUT ──
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'||e.code==='ArrowUp'){
+    if(document.activeElement===document.getElementById('player-name-input'))return;
+    e.preventDefault();jump();
+  }
+});
+
+let touchStartY=0;
+document.addEventListener('touchstart',e=>{
+  if(document.activeElement===document.getElementById('player-name-input'))return;
+  // ボタン・インタラクティブ要素のタッチはそのまま通す
+  if(e.target.closest('button, input, a')) return;
+  // Stage2はボタンで操作するので通す
+  if(gameState==='dead' && document.getElementById('overlay-stage2').style.display==='flex') return;
+  touchStartY=e.touches[0].clientY; e.preventDefault(); jump();
+},{passive:false});
+
+document.addEventListener('touchend',e=>{
+  // Only block default on the game canvas itself
+  if(e.target===canvas){ e.preventDefault(); }
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(e.target===canvas){ e.preventDefault(); }
+},{passive:false});
+</script>
+</body>
+</html>
