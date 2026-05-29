@@ -51,6 +51,8 @@ export class Game {
     this.canvas.height = H;
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
+    window.addEventListener('orientationchange', () => window.setTimeout(() => this.resizeCanvas(), 250));
+    window.visualViewport?.addEventListener('resize', () => this.resizeCanvas());
   }
 
   get state(): GameStateName {
@@ -134,7 +136,11 @@ export class Game {
 
   private resizeCanvas(): void {
     const wrapper = byId<HTMLDivElement>('canvas-wrapper');
-    const maxWidth = Math.min(window.innerWidth - 20, 800);
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const verticalUiBudget = viewportHeight < 500 ? 54 : 78;
+    const maxByHeight = Math.max(280, (viewportHeight - verticalUiBudget) * (W / H));
+    const maxWidth = Math.min(viewportWidth - 20, maxByHeight, 800);
     wrapper.style.maxWidth = `${maxWidth}px`;
     wrapper.style.aspectRatio = `${W} / ${H}`;
   }

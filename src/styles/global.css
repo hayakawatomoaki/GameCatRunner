@@ -9,6 +9,7 @@
 html,
 body,
 #app {
+  height: 100%;
   min-height: 100%;
 }
 
@@ -21,7 +22,10 @@ body {
   font-family: 'Press Start 2P', monospace;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
   touch-action: none;
 }
 
@@ -38,6 +42,7 @@ button {
   align-items: center;
   display: flex;
   justify-content: center;
+  min-height: 100dvh;
   width: 100%;
 }
 
@@ -139,7 +144,7 @@ button {
   display: none;
   flex-direction: column;
   max-width: 820px;
-  padding: 10px;
+  padding: 8px 10px;
   width: 100%;
 }
 
@@ -192,6 +197,7 @@ canvas {
   right: 0;
   top: 0;
   touch-action: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #overlay-stage1,
@@ -453,6 +459,59 @@ canvas {
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  body {
+    justify-content: flex-start;
+  }
+
+  #app {
+    align-items: flex-start;
+  }
+
+  #title-screen {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .title-cat {
+    font-size: clamp(34px, 12vh, 56px);
+  }
+
+  #title-screen h1 {
+    font-size: clamp(18px, 9vh, 34px);
+  }
+
+  .subtitle {
+    font-size: clamp(7px, 2.8vh, 10px);
+    line-height: 1.6;
+  }
+
+  .start-btn {
+    border-width: 3px;
+    font-size: clamp(8px, 3.2vh, 12px);
+    padding: 10px 24px;
+  }
+
+  #ranking-btn-title {
+    font-size: clamp(6px, 2.4vh, 9px);
+    padding: 7px 14px;
+  }
+
+  .controls-note {
+    display: none;
+  }
+
+  #game-container {
+    padding: 4px 8px;
+  }
+
+  #hud {
+    margin-bottom: 4px;
+  }
+
+  #instructions {
+    display: none;
+  }
+
   #overlay h2 {
     font-size: clamp(12px, 4.5vh, 24px);
   }
@@ -467,23 +526,32 @@ canvas {
   }
 
   #stage2-score {
-    font-size: clamp(8px, 2.5vh, 13px);
+    font-size: clamp(7px, 2.3vh, 12px);
   }
 
   #name-input-area label {
-    font-size: clamp(6px, 1.8vh, 8px);
+    font-size: clamp(5px, 1.7vh, 8px);
+    line-height: 1.45;
+  }
+
+  #player-name-input {
+    border-width: 2px;
+    padding: 3px 8px;
   }
 
   #submit-score-btn {
-    font-size: clamp(7px, 2vh, 10px);
+    font-size: clamp(6px, 1.8vh, 9px);
+    padding: 4px 12px;
   }
 
   .overlay-btn {
-    font-size: clamp(8px, 2.5vh, 12px);
+    font-size: clamp(7px, 2.2vh, 11px);
+    padding: 5px 14px;
   }
 
   .overlay-btn.secondary {
-    font-size: clamp(6px, 2vh, 9px);
+    font-size: clamp(5px, 1.7vh, 8px);
+    padding: 4px 9px;
   }
 
   #overlay,
@@ -498,6 +566,6 @@ canvas {
   }
 
   #name-input-area {
-    padding: 4px 10px;
+    padding: 3px 10px;
   }
 }
