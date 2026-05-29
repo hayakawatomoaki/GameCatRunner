@@ -10,6 +10,22 @@ export class Game {
   readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly sound = new SoundPlayer();
+  private readonly titleScreen = byId<HTMLDivElement>('title-screen');
+  private readonly gameContainer = byId<HTMLDivElement>('game-container');
+  private readonly canvasWrapper = byId<HTMLDivElement>('canvas-wrapper');
+  private readonly overlay = byId<HTMLDivElement>('overlay');
+  private readonly overlayStage1 = byId<HTMLDivElement>('overlay-stage1');
+  private readonly overlayStage2 = byId<HTMLDivElement>('overlay-stage2');
+  private readonly resultText = byId<HTMLDivElement>('result-text');
+  private readonly tapPrompt = byId<HTMLButtonElement>('tap-prompt');
+  private readonly stage2Score = byId<HTMLDivElement>('stage2-score');
+  private readonly playerNameInput = byId<HTMLInputElement>('player-name-input');
+  private readonly submitScoreButton = byId<HTMLButtonElement>('submit-score-btn');
+  private readonly nameInputArea = byId<HTMLDivElement>('name-input-area');
+  private readonly scoreDisplay = byId<HTMLSpanElement>('score-display');
+  private readonly hiDisplay = byId<HTMLSpanElement>('hi-display');
+  private readonly speedDisplay = byId<HTMLSpanElement>('speed-display');
+  private readonly isTouchDevice = matchMedia('(pointer: coarse)').matches;
   private hiScore = 0;
   private gameState: GameStateName = 'idle';
   private score = 0;
@@ -69,8 +85,8 @@ export class Game {
 
   start(): void {
     this.sound.warmup();
-    byId<HTMLDivElement>('title-screen').style.display = 'none';
-    byId<HTMLDivElement>('game-container').style.display = 'flex';
+    this.titleScreen.style.display = 'none';
+    this.gameContainer.style.display = 'flex';
     this.restart();
     if (!this.loopStarted) {
       this.loopStarted = true;
@@ -94,9 +110,8 @@ export class Game {
     this.lastSpeedLevel = 0;
     this.initClouds();
     this.resetCat();
-    byId<HTMLDivElement>('overlay').style.display = 'none';
-    byId<HTMLSpanElement>('score-display').textContent = 'SCORE: 0';
-    byId<HTMLSpanElement>('speed-display').textContent = 'SPEED: 4.0';
+    this.overlay.style.display = 'none';
+    this.updateHud(true);
   }
 
   jump(): void {
@@ -105,8 +120,8 @@ export class Game {
       return;
     }
     if (this.gameState === 'dead') {
-      if (document.activeElement === byId<HTMLInputElement>('player-name-input')) return;
-      if (byId<HTMLDivElement>('overlay-stage1').style.display !== 'none') {
+      if (document.activeElement === this.playerNameInput) return;
+      if (this.overlayStage1.style.display !== 'none') {
         if (this.restartReady) this.goStage2();
       }
       return;
@@ -121,28 +136,24 @@ export class Game {
   }
 
   goStage2(): void {
-    byId<HTMLDivElement>('overlay-stage1').style.display = 'none';
-    byId<HTMLDivElement>('overlay-stage2').style.display = 'flex';
-    byId<HTMLDivElement>('stage2-score').innerHTML = `SCORE: ${this.score}&nbsp;&nbsp;|&nbsp;&nbsp;BEST: ${this.hiScore}`;
-    const nameInput = byId<HTMLInputElement>('player-name-input');
-    const submitBtn = byId<HTMLButtonElement>('submit-score-btn');
-    const nameArea = byId<HTMLDivElement>('name-input-area');
-    nameInput.value = '';
-    submitBtn.textContent = '✔ SUBMIT';
-    submitBtn.disabled = false;
-    nameArea.style.display = '';
+    this.overlayStage1.style.display = 'none';
+    this.overlayStage2.style.display = 'flex';
+    this.stage2Score.innerHTML = `SCORE: ${this.score}&nbsp;&nbsp;|&nbsp;&nbsp;BEST: ${this.hiScore}`;
+    this.playerNameInput.value = '';
+    this.submitScoreButton.textContent = '✔ SUBMIT';
+    this.submitScoreButton.disabled = false;
+    this.nameInputArea.style.display = '';
     this.onStage2Score?.(this.score, this.hiScore);
   }
 
   private resizeCanvas(): void {
-    const wrapper = byId<HTMLDivElement>('canvas-wrapper');
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const verticalUiBudget = viewportHeight < 500 ? 54 : 78;
     const maxByHeight = Math.max(280, (viewportHeight - verticalUiBudget) * (W / H));
     const maxWidth = Math.min(viewportWidth - 20, maxByHeight, 800);
-    wrapper.style.maxWidth = `${maxWidth}px`;
-    wrapper.style.aspectRatio = `${W} / ${H}`;
+    this.canvasWrapper.style.maxWidth = `${maxWidth}px`;
+    this.canvasWrapper.style.aspectRatio = `${W} / ${H}`;
   }
 
   private resetCat(): void {
@@ -167,7 +178,8 @@ export class Game {
   }
 
   private spawnParticles(x: number, y: number, color: string, count: number): void {
-    for (let i = 0; i < count; i++) {
+    const particleCount = this.isTouchDevice ? Math.ceil(count * 0.6) : count;
+    for (let i = 0; i < particleCount; i++) {
       this.particles.push({
         x,
         y,
@@ -209,18 +221,18 @@ export class Game {
     this.sound.play('die');
 
     const m = getResultMessage(this.score);
-    byId<HTMLDivElement>('result-text').innerHTML =
+    this.resultText.innerHTML =
       `<span class="message-jp">${m.jp.replace(/\n/g, '<br />')}</span>` +
       `<br /><span class="message-en">${m.en.replace(/\n/g, '<br />')}</span>`;
 
-    byId<HTMLDivElement>('overlay-stage1').style.display = 'flex';
-    byId<HTMLDivElement>('overlay-stage2').style.display = 'none';
-    byId<HTMLButtonElement>('tap-prompt').classList.remove('visible');
-    byId<HTMLDivElement>('overlay').style.display = 'flex';
+    this.overlayStage1.style.display = 'flex';
+    this.overlayStage2.style.display = 'none';
+    this.tapPrompt.classList.remove('visible');
+    this.overlay.style.display = 'flex';
 
     window.setTimeout(() => {
       this.restartReady = true;
-      byId<HTMLButtonElement>('tap-prompt').classList.add('visible');
+      this.tapPrompt.classList.add('visible');
     }, 1500);
   }
 
@@ -297,12 +309,17 @@ export class Game {
     }
     this.particles = this.particles.filter((p) => p.life > 0);
 
-    byId<HTMLSpanElement>('score-display').textContent = `SCORE: ${this.score}`;
-    byId<HTMLSpanElement>('speed-display').textContent = `SPEED: ${this.speed.toFixed(1)}`;
     if (this.score > this.hiScore) {
       this.hiScore = this.score;
-      byId<HTMLSpanElement>('hi-display').textContent = `HI: ${this.hiScore}`;
     }
+    if (this.frameCount % 4 === 0) this.updateHud(false);
+  }
+
+  private updateHud(force: boolean): void {
+    if (!force && this.frameCount % 4 !== 0) return;
+    this.scoreDisplay.textContent = `SCORE: ${this.score}`;
+    this.speedDisplay.textContent = `SPEED: ${this.speed.toFixed(1)}`;
+    this.hiDisplay.textContent = `HI: ${this.hiScore}`;
   }
 
   private draw(): void {
