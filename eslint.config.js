@@ -11,6 +11,7 @@ export default tseslint.config(
     files: ['public/service-worker.js'],
     languageOptions: {
       globals: {
+        URL: 'readonly',
         caches: 'readonly',
         fetch: 'readonly',
         self: 'readonly',
